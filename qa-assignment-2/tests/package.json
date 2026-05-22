@@ -1,0 +1,22 @@
+{
+  "name": "petstore-api-tests",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "jest --runInBand --verbose",
+    "test:pet": "jest pet.test.js --verbose",
+    "test:store": "jest store.test.js --verbose",
+    "test:user": "jest user.test.js --verbose",
+    "test:security": "jest security.test.js --verbose",
+    "test:errors": "jest errors.test.js --verbose"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testTimeout": 15000
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0"
+  }
+}
