@@ -1,8 +1,8 @@
 # Petstore API Bug Report
 
 **API Under Test:** Swagger Petstore — `https://petstore.swagger.io/v2`  
-**Date:** 2026-05-22  
-**Total Bugs Found:** 12  
+**Date:** 2026-05-23 (updated after PDF gap analysis)  
+**Total Bugs Found:** 23  
 
 ---
 
@@ -23,6 +23,16 @@
 | BUG-011 | String path param returns 404 + stack trace instead of 400 | Medium | Error Handling | Open |
 | BUG-012 | GET /pet/findByStatus response time exceeds 1000ms | Medium | Performance | Open |
 | BUG-013 | POST /pet with malformed JSON returns 500 (server crash) | High | Error Handling | Open |
+| BUG-014 | POST /pet with duplicate ID returns 200 instead of 409 | High | Pet | Open |
+| BUG-015 | PUT /pet with non-existent ID creates resource instead of 404 | High | Pet | Open |
+| BUG-016 | POST /pet returns 200 instead of 201 + no Location header | Medium | Pet | Open |
+| BUG-017 | DELETE /pet returns 200 with body instead of 204 No Content | Medium | Pet | Open |
+| BUG-018 | POST /user with duplicate username returns 200 instead of 409 | High | User | Open |
+| BUG-019 | POST /store/order accepts invalid status enum value | High | Store | Open |
+| BUG-020 | PUT /user with non-existent username creates resource instead of 404 | High | User | Open |
+| BUG-021 | Missing security response headers (X-Frame-Options, HSTS, etc.) | Medium | Security | Open |
+| BUG-022 | Server version disclosed in response header | Medium | Security | Open |
+| BUG-023 | Error responses return text/html instead of application/json | Medium | Error Handling | Open |
 
 ---
 
@@ -339,19 +349,272 @@ GET /store/order/abc
 
 ---
 
+---
+
+### BUG-014 — POST /pet with duplicate ID returns 200 instead of 409
+
+| Field | Value |
+|-------|-------|
+| **Severity** | High |
+| **Module** | Pet |
+| **Endpoint** | `POST /pet` |
+| **Test Case** | TC-PET-015 |
+| **Bug Type** | Data Validation — Conflict Detection |
+
+**Steps to Reproduce:**
+```
+POST /pet  Body: {"id":11111,"name":"FirstPet","status":"available","photoUrls":[]}
+POST /pet  Body: {"id":11111,"name":"DuplicatePet","status":"pending","photoUrls":[]}
+```
+
+**Expected:** 409 Conflict on second POST — resource with id=11111 already exists
+
+**Actual:** 200 OK — second POST silently overwrites the first pet
+
+**Impact:** Data integrity broken. Any client can silently overwrite another pet by knowing its ID. No conflict protection.
+
+---
+
+### BUG-015 — PUT /pet with non-existent petId creates resource (upsert behavior)
+
+| Field | Value |
+|-------|-------|
+| **Severity** | High |
+| **Module** | Pet |
+| **Endpoint** | `PUT /pet` |
+| **Test Case** | TC-PET-016 |
+| **Bug Type** | Functional — Wrong Behavior on Non-existent Resource |
+
+**Steps to Reproduce:**
+```
+PUT /pet  Body: {"id":9876543,"name":"Ghost","status":"available","photoUrls":[]}
+(pet id 9876543 does not exist)
+```
+
+**Expected:** 404 Not Found — PUT should update an existing resource, not create one
+
+**Actual:** 200 OK — pet is created with a new ID
+
+**Impact:** PUT behaves as UPSERT, creating data unintentionally. Breaks the REST contract where PUT means "replace existing."
+
+---
+
+### BUG-016 — POST /pet returns 200 instead of 201 + no Location header
+
+| Field | Value |
+|-------|-------|
+| **Severity** | Medium |
+| **Module** | Pet |
+| **Endpoint** | `POST /pet` |
+| **Test Case** | TC-PET-017 |
+| **Bug Type** | REST Convention Violation |
+
+**Steps to Reproduce:**
+```
+POST /pet  Body: {"id":22221,"name":"HeaderTest","status":"available","photoUrls":[]}
+Inspect response headers and status code
+```
+
+**Expected:** 201 Created + `Location: /pet/22221` header (per REST standard — course slide: "POST: Status 201 + Location header")
+
+**Actual:** 200 OK, no Location header
+
+**Observed headers:**
+```
+content-type: application/json
+access-control-allow-origin: *
+```
+
+**Impact:** Clients relying on 201 to detect resource creation or on the Location header to find the created resource will fail. Violates REST idiomatic behavior documented in the course.
+
+---
+
+### BUG-017 — DELETE /pet returns 200 with body instead of 204 No Content
+
+| Field | Value |
+|-------|-------|
+| **Severity** | Medium |
+| **Module** | Pet |
+| **Endpoint** | `DELETE /pet/{petId}` |
+| **Test Case** | TC-PET-018 |
+| **Bug Type** | REST Convention Violation |
+
+**Steps to Reproduce:**
+```
+DELETE /pet/99991
+```
+
+**Expected:** 204 No Content with empty body (per REST standard — course slide: "DELETE: Status 204 (No Content)")
+
+**Actual:** 200 OK with body `{"code":200,"type":"unknown","message":"99991"}`
+
+**Impact:** Clients checking for 204 to confirm deletion will misinterpret the response. Returning a body with 200 is non-standard for a delete operation.
+
+---
+
+### BUG-018 — POST /user with duplicate username returns 200 instead of 409
+
+| Field | Value |
+|-------|-------|
+| **Severity** | High |
+| **Module** | User |
+| **Endpoint** | `POST /user` |
+| **Test Case** | TC-USER-012 |
+| **Bug Type** | Data Validation — Conflict Detection |
+
+**Steps to Reproduce:**
+```
+POST /user  Body: {"id":33331,"username":"dupuser_test",...}
+POST /user  Body: {"id":33332,"username":"dupuser_test",...}  (same username)
+```
+
+**Expected:** 409 Conflict — username must be unique
+
+**Actual:** 200 OK for both — duplicate username accepted silently
+
+**Impact:** Two users can share the same username, breaking user identity uniqueness. Combined with BUG-001 (auth bypass), any username can be re-registered.
+
+---
+
+### BUG-019 — POST /store/order accepts invalid order status enum value
+
+| Field | Value |
+|-------|-------|
+| **Severity** | High |
+| **Module** | Store |
+| **Endpoint** | `POST /store/order` |
+| **Test Case** | TC-STORE-009 |
+| **Bug Type** | Data Validation — Enum Validation |
+
+**Steps to Reproduce:**
+```
+POST /store/order
+Body: {"id":44442,"petId":1,"quantity":1,"status":"INVALID_STATUS","complete":false}
+```
+
+**Expected:** 400 Bad Request — `status` must be one of: `placed`, `approved`, `delivered`
+
+**Actual:** 200 OK — order created with `"status":"INVALID_STATUS"`
+
+**Impact:** Orders with invalid statuses can corrupt order state machines downstream. Any string value is accepted for the `status` field.
+
+---
+
+### BUG-020 — PUT /user with non-existent username creates user instead of 404
+
+| Field | Value |
+|-------|-------|
+| **Severity** | High |
+| **Module** | User |
+| **Endpoint** | `PUT /user/{username}` |
+| **Test Case** | TC-USER-013 |
+| **Bug Type** | Functional — Wrong Behavior on Non-existent Resource |
+
+**Steps to Reproduce:**
+```
+PUT /user/nonexistent_user_xyz_99
+Body: valid user object
+```
+
+**Expected:** 404 Not Found — cannot update a user that doesn't exist
+
+**Actual:** 200 OK — user created (upsert behavior)
+
+**Impact:** Same as BUG-015. PUT behaves as UPSERT, violating REST semantics.
+
+---
+
+### BUG-021 — Missing security response headers
+
+| Field | Value |
+|-------|-------|
+| **Severity** | Medium |
+| **Module** | Security |
+| **Endpoint** | All endpoints |
+| **Test Case** | TC-HDR-003 |
+| **Bug Type** | Security — Missing Security Headers |
+
+**Headers checked, all absent:**
+
+| Header | Purpose | Status |
+|--------|---------|--------|
+| `X-Frame-Options` | Prevent clickjacking | **Missing** |
+| `X-Content-Type-Options: nosniff` | Prevent MIME sniffing | **Missing** |
+| `Strict-Transport-Security` | Enforce HTTPS | **Missing** |
+| `Content-Security-Policy` | Restrict resource loading | **Missing** |
+
+**Actual headers returned:**
+```
+content-type: application/json
+access-control-allow-origin: *
+access-control-allow-methods: GET, POST, DELETE, PUT
+access-control-allow-headers: Content-Type, api_key, Authorization
+server: Jetty(9.2.9.v20150224)
+```
+
+**Impact:** Without X-Frame-Options, the API responses can be embedded in iframes for clickjacking. Without X-Content-Type-Options, browsers may MIME-sniff responses. These are standard security headers recommended in OWASP guidelines.
+
+---
+
+### BUG-022 — Server version disclosed in response header
+
+| Field | Value |
+|-------|-------|
+| **Severity** | Medium |
+| **Module** | Security |
+| **Endpoint** | All endpoints |
+| **Test Case** | TC-HDR-004 |
+| **Bug Type** | Security — Information Disclosure |
+
+**Actual:**
+```
+server: Jetty(9.2.9.v20150224)
+```
+
+**Expected:** Server header absent or generic
+
+**Impact:** Exposes server type (Jetty) and exact version (9.2.9, released 2015). Attackers can look up known CVEs for that specific version. Jetty 9.2.9 is over 10 years old and likely has published vulnerabilities.
+
+---
+
+### BUG-023 — 404 error responses return text/html instead of application/json
+
+| Field | Value |
+|-------|-------|
+| **Severity** | Medium |
+| **Module** | Error Handling |
+| **Endpoint** | `GET /pet/1` (non-existent on demo server) |
+| **Test Case** | TC-HDR-005 |
+| **Bug Type** | Error Handling — Inconsistent Content-Type |
+
+**Steps to Reproduce:**
+```
+GET /pet/1   (pet ID 1 not present on demo server)
+Inspect Content-Type response header
+```
+
+**Expected:** `Content-Type: application/json` — all API responses should be JSON
+
+**Actual:** `Content-Type: text/html; charset=ISO-8859-1` — server returns an HTML error page
+
+**Impact:** API clients parsing JSON will crash when they receive HTML. Inconsistent with all other endpoints that return `application/json`. Best practice (per course slide: "Verify Response Headers") is that all responses, including errors, should have consistent Content-Type.
+
+---
+
 ## Bug Distribution by Category
 
-| Bug Type | Count |
-|----------|-------|
-| Security | 4 (BUG-001, BUG-007, BUG-008, BUG-009) |
-| Data Validation | 4 (BUG-002, BUG-003, BUG-004, BUG-005) |
-| Error Handling | 4 (BUG-006, BUG-010, BUG-011, BUG-013) |
-| Performance | 1 (BUG-012) |
+| Bug Type | Count | Bug IDs |
+|----------|-------|---------|
+| Security | 6 | BUG-001, BUG-007, BUG-008, BUG-009, BUG-021, BUG-022 |
+| Data Validation | 7 | BUG-002, BUG-003, BUG-004, BUG-005, BUG-014, BUG-018, BUG-019 |
+| Error Handling | 5 | BUG-006, BUG-010, BUG-011, BUG-013, BUG-023 |
+| Functional / REST Convention | 4 | BUG-015, BUG-016, BUG-017, BUG-020 |
+| Performance | 1 | BUG-012 |
 
 ## Bug Distribution by Severity
 
 | Severity | Count | Bug IDs |
 |----------|-------|---------|
 | Critical | 2 | BUG-001, BUG-008 |
-| High | 6 | BUG-002, BUG-004, BUG-005, BUG-007, BUG-009 + BUG-006 partial |
-| Medium | 4 | BUG-003, BUG-006, BUG-010, BUG-011, BUG-012 |
+| High | 12 | BUG-002, BUG-004, BUG-005, BUG-007, BUG-009, BUG-013, BUG-014, BUG-015, BUG-018, BUG-019, BUG-020 + BUG-003 |
+| Medium | 9 | BUG-003, BUG-006, BUG-010, BUG-011, BUG-012, BUG-016, BUG-017, BUG-021, BUG-022, BUG-023 |

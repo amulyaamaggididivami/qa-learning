@@ -612,15 +612,169 @@
 
 ---
 
+## Module 1 (continued): Pet — REST Convention & Conflict Tests
+
+### TC-PET-015 — POST /pet with duplicate ID (expect 409)
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Endpoint** | `/pet` (same `id` sent twice) |
+| **Headers** | `Content-Type: application/json`, `api_key: special-key` |
+| **Request Body** | `{"id":11111,"name":"DuplicatePet","status":"pending","photoUrls":[]}` (ID 11111 already created) |
+| **Expected** | 409 Conflict — duplicate resource ID |
+| **Actual** | 200 OK — second POST overwrites the first pet silently |
+| **Result** | **FAIL** — Duplicate entry not rejected. Bug logged: BUG-014 |
+
+---
+
+### TC-PET-016 — PUT /pet with non-existent petId (expect 404)
+
+| Field | Value |
+|-------|-------|
+| **Method** | PUT |
+| **Endpoint** | `/pet` |
+| **Request Body** | `{"id":9876543,"name":"Ghost","status":"available","photoUrls":[]}` (ID never created) |
+| **Expected** | 404 Not Found — cannot update a resource that doesn't exist |
+| **Actual** | 200 OK — server **creates** the pet (acts as upsert, not update-only) |
+| **Result** | **FAIL** — Non-existent resource silently created. Bug logged: BUG-015 |
+
+---
+
+### TC-PET-017 — POST /pet response code should be 201 + Location header
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Endpoint** | `/pet` |
+| **Expected** | 201 Created + `Location: /pet/{id}` header (REST convention per course material) |
+| **Actual** | 200 OK — no Location header returned |
+| **Result** | **FAIL** — REST convention violation. Bug logged: BUG-016 |
+
+---
+
+### TC-PET-018 — DELETE /pet response code should be 204 No Content
+
+| Field | Value |
+|-------|-------|
+| **Method** | DELETE |
+| **Endpoint** | `/pet/{petId}` |
+| **Expected** | 204 No Content (REST convention: successful delete has no body) |
+| **Actual** | 200 OK with body `{"code":200,"type":"unknown","message":"99991"}` |
+| **Result** | **FAIL** — REST convention violation. Bug logged: BUG-017 |
+
+---
+
+## Module 2 (continued): Store — Enum Validation
+
+### TC-STORE-009 — POST /store/order with invalid status enum
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Endpoint** | `/store/order` |
+| **Request Body** | `{"id":44442,"petId":1,"quantity":1,"status":"INVALID_STATUS","complete":false}` |
+| **Expected** | 400 Bad Request — `status` must be one of: `placed`, `approved`, `delivered` |
+| **Actual** | 200 OK — order created with `"status":"INVALID_STATUS"` |
+| **Result** | **FAIL** — Invalid enum value accepted. Bug logged: BUG-019 |
+
+---
+
+## Module 3 (continued): User — Conflict & Non-existent Update
+
+### TC-USER-012 — POST /user with duplicate username (expect 409)
+
+| Field | Value |
+|-------|-------|
+| **Method** | POST |
+| **Endpoint** | `/user` |
+| **Request Body** | `{"id":33332,"username":"dupuser_test","firstName":"C","lastName":"D","email":"c@d.com","password":"pass2","phone":"456","userStatus":1}` (username already exists) |
+| **Expected** | 409 Conflict |
+| **Actual** | 200 OK — duplicate username accepted silently |
+| **Result** | **FAIL** — Duplicate username not rejected. Bug logged: BUG-018 |
+
+---
+
+### TC-USER-013 — PUT /user with non-existent username (expect 404)
+
+| Field | Value |
+|-------|-------|
+| **Method** | PUT |
+| **Endpoint** | `/user/nonexistent_user_xyz_99` |
+| **Request Body** | Valid user object |
+| **Expected** | 404 Not Found — cannot update a user that doesn't exist |
+| **Actual** | 200 OK — user created (acts as upsert) |
+| **Result** | **FAIL** — Non-existent user silently created. Bug logged: BUG-020 |
+
+---
+
+## Module 7: Response Headers
+
+### TC-HDR-001 — Content-Type header on successful JSON responses
+
+| Field | Value |
+|-------|-------|
+| **Endpoint** | `GET /pet/findByStatus?status=available` |
+| **Expected** | `Content-Type: application/json` |
+| **Actual** | `Content-Type: application/json` |
+| **Result** | **PASS** |
+
+---
+
+### TC-HDR-002 — CORS headers present
+
+| Field | Value |
+|-------|-------|
+| **Endpoint** | `GET /pet/findByStatus?status=available` |
+| **Expected** | `Access-Control-Allow-Origin: *` |
+| **Actual** | `Access-Control-Allow-Origin: *`, `Access-Control-Allow-Methods: GET, POST, DELETE, PUT`, `Access-Control-Allow-Headers: Content-Type, api_key, Authorization` |
+| **Result** | **PASS** |
+
+---
+
+### TC-HDR-003 — Security response headers present
+
+| Field | Value |
+|-------|-------|
+| **Endpoints** | All endpoints |
+| **Expected** | `X-Frame-Options`, `X-Content-Type-Options: nosniff`, `Strict-Transport-Security` present |
+| **Actual** | None of these headers are returned in any response |
+| **Result** | **FAIL** — Missing security headers. Bug logged: BUG-021 |
+
+---
+
+### TC-HDR-004 — Server header must not expose version
+
+| Field | Value |
+|-------|-------|
+| **Endpoint** | Any endpoint |
+| **Expected** | Server header absent or generic (e.g. `server: -`) |
+| **Actual** | `server: Jetty(9.2.9.v20150224)` — full server name and version exposed |
+| **Result** | **FAIL** — Version information disclosed. Bug logged: BUG-022 |
+
+---
+
+### TC-HDR-005 — 404 error responses must return JSON not HTML
+
+| Field | Value |
+|-------|-------|
+| **Endpoint** | `GET /pet/1` (non-existent on demo server) |
+| **Expected** | `Content-Type: application/json` even for error responses |
+| **Actual** | `Content-Type: text/html; charset=ISO-8859-1` — error page returns HTML |
+| **Result** | **FAIL** — Inconsistent Content-Type on error responses. Bug logged: BUG-023 |
+
+---
+
 ## Summary Table
 
 | Module | Total | PASS | FAIL | INCONCLUSIVE |
 |--------|-------|------|------|--------------|
-| Pet | 14 | 10 | 4 | 0 |
-| Store | 8 | 5 | 2 | 1 |
-| User | 11 | 8 | 2 | 1 |
+| Pet | 18 | 10 | 8 | 0 |
+| Store | 9 | 5 | 3 | 1 |
+| User | 13 | 8 | 4 | 1 |
 | Security | 5 | 1 | 2 | 2 |
 | Error Handling | 5 | 2 | 3 | 0 |
 | Performance | 4 | 2 | 2 | 0 |
-| **Total** | **47** | **28** | **15** | **4** |
-| **Pass Rate** | | **60%** | | |
+| Response Headers | 5 | 2 | 3 | 0 |
+| **Total** | **59** | **30** | **25** | **4** |
+| **Pass Rate** | | **51%** | | |

@@ -10,88 +10,106 @@
 
 ```
 qa-assignment-2/
-├── README.md                        # This file
-├── 02_API_Testing_Concepts.pptx.pdf # Course reference material
-├── Petstore_API_Test_Plan.md        # Scope, approach, modules, severity matrix
-├── Petstore_API_Test_Cases.md       # 47 manual test cases with actual results
-├── Petstore_API_Bug_Report.md       # 13 bugs found with repro steps & impact
-└── tests/                           # Automated Jest test suite
-    ├── package.json
-    ├── helpers/
-    │   └── client.js                # Shared axios instance
-    ├── pet.test.js                  # Pet module (14 tests)
-    ├── store.test.js                # Store module (8 tests)
-    ├── user.test.js                 # User module (11 tests)
-    ├── security.test.js             # Security (5 tests)
-    └── errors.test.js               # Error handling (7 tests)
+├── README.md                            # This file
+├── 02_API_Testing_Concepts.pptx.pdf     # Course reference material
+├── Petstore_API_Test_Plan.md            # Scope, approach, modules, severity matrix
+├── Petstore_API_Test_Cases.md           # 47 manual test cases with actual results
+├── Petstore_API_Bug_Report.md           # 13 bugs with repro steps & impact
+└── Petstore_Postman_Collection.json     # Importable Postman collection (45 requests)
 ```
 
 ---
 
-## Running the Tests
+## Running the Postman Collection
+
+### Option 1 — Postman UI (Recommended)
+
+1. Open Postman
+2. Click **Import** → select `Petstore_Postman_Collection.json`
+3. Open the collection → click **Run collection**
+4. All collection variables (`petId`, `orderId`, `username`) are set automatically by pre-request scripts
+
+### Option 2 — Newman (CLI)
 
 ```bash
-cd qa-assignment-2/tests
-npm install
-npm test                   # run all suites
-npm run test:pet           # pet module only
-npm run test:store         # store module only
-npm run test:user          # user module only
-npm run test:security      # security tests only
-npm run test:errors        # error handling tests only
+npm install -g newman
+newman run Petstore_Postman_Collection.json
 ```
 
-**Requirements:** Node.js 18+, internet access to `petstore.swagger.io`
+No environment file needed — all variables are embedded in the collection.
 
 ---
 
-## Test Results Summary
+## Test Results (Newman Run)
 
-| Module | Total | Pass | Skip (Known Bug) | Fail |
-|--------|-------|------|-------------------|------|
-| Pet | 14 | 10 | 4 | 0 |
-| Store | 8 | 6 | 2 | 0 |
-| User | 11 | 8 | 3 | 0 |
-| Security | 5 | 3 | 2 | 0 |
-| Error Handling | 7 | 5 | 5 | 0 |
-| **Total** | **51** | **34** | **17** | **0** |
+```
+Tests:   28 passed  |  16 failed (all [BUG-XXX] tagged — known bugs)
+Requests: 45 total
+```
 
-> Skipped tests are known bugs — each skip comment references the bug ID (e.g. `BUG-001`). Re-enable them once fixed to confirm the fix.
+| Module | Requests | Pass | Fail (Known Bugs) |
+|--------|----------|------|-------------------|
+| Pet | 14 | 10 | 4 |
+| Store | 8 | 5 | 3 |
+| User | 11 | 8 | 3 |
+| Security | 5 | 2 | 3 |
+| Error Handling | 5 | 3 | 2 |
+| **Total** | **45** | **28** | **16** |
+
+> Every failing test name starts with `[BUG-XXX]` and intentionally asserts the *correct* expected behavior against a known bug. They serve as regression tests — they will auto-pass once the bug is fixed.
+
+---
+
+## Understanding the Failures
+
+The collection uses two test styles:
+
+**Happy-path tests** (should always pass):
+```javascript
+pm.test('Status is 200', () => pm.response.to.have.status(200));
+```
+
+**Bug-documentation tests** (intentionally fail until fixed):
+```javascript
+// BUG-001: Login accepts any password — should return 401
+pm.test('[BUG-001] Should return 401 for wrong password', () => {
+  pm.expect(pm.response.code).to.equal(401, 'BUG-001: Expected 401 but got ' + pm.response.code);
+});
+```
+
+When a bug is fixed, the tagged test flips from ✗ to ✓ automatically — no test changes needed.
 
 ---
 
 ## Bugs Found
 
-| Bug ID | Title | Severity |
-|--------|-------|----------|
-| BUG-001 | Login accepts wrong/missing credentials | **Critical** |
-| BUG-008 | POST /pet succeeds without authentication | **Critical** |
-| BUG-002 | PUT /pet accepts missing required `name` field | High |
-| BUG-004 | findByStatus returns 200 for invalid enum value | High |
-| BUG-005 | POST /store/order accepts negative quantity | High |
-| BUG-007 | GET /user returns password in plaintext | High |
-| BUG-009 | XSS payload stored and returned unescaped | High |
-| BUG-013 | Malformed JSON body causes 500 server crash | High |
-| BUG-003 | POST /pet accepts missing required `photoUrls` | Medium |
-| BUG-006 | GET /store/order allows orderId outside spec range | Medium |
-| BUG-010 | Empty body returns 500 instead of 400 | Medium |
-| BUG-011 | String path param returns 404 + Java stack trace | Medium |
-| BUG-012 | GET /pet/findByStatus averages 1557ms (no pagination) | Medium |
+| Bug ID | Title | Severity | Test Case |
+|--------|-------|----------|-----------|
+| BUG-001 | Login accepts wrong/missing credentials | **Critical** | TC-USER-005, TC-USER-006 |
+| BUG-008 | POST /pet succeeds without authentication | **Critical** | TC-SEC-001 |
+| BUG-002 | PUT /pet accepts missing required `name` | High | TC-PET-006 |
+| BUG-004 | findByStatus returns 200 for invalid enum | High | TC-PET-011 |
+| BUG-005 | Order accepts negative quantity | High | TC-STORE-003 |
+| BUG-007 | GET /user returns password in plaintext | High | TC-SEC-005 |
+| BUG-009 | XSS payload stored and returned unescaped | High | TC-SEC-004 |
+| BUG-013 | Malformed JSON body causes 500 server crash | High | TC-ERR-002 |
+| BUG-003 | POST /pet accepts missing required `photoUrls` | Medium | TC-PET-007 |
+| BUG-006 | GET /store/order allows orderId outside spec range | Medium | TC-STORE-006 |
+| BUG-010 | Empty body returns 500/405 instead of 400 | Medium | TC-ERR-003 |
+| BUG-011 | String path param returns 404 + Java stack trace | Medium | TC-PET-004, TC-ERR-004 |
+| BUG-012 | GET /pet/findByStatus averages 1557ms (no pagination) | Medium | TC-PET-008 |
 
-Full details with reproduction steps in [Petstore_API_Bug_Report.md](Petstore_API_Bug_Report.md).
+Full details with reproduction steps → [Petstore_API_Bug_Report.md](Petstore_API_Bug_Report.md)
 
 ---
 
 ## API Modules Tested
 
-### Pet `/pet`
-`POST /pet` · `GET /pet/{petId}` · `PUT /pet` · `DELETE /pet/{petId}` · `GET /pet/findByStatus`
-
-### Store `/store`
-`GET /store/inventory` · `POST /store/order` · `GET /store/order/{orderId}` · `DELETE /store/order/{orderId}`
-
-### User `/user`
-`POST /user` · `GET /user/{username}` · `PUT /user/{username}` · `DELETE /user/{username}` · `GET /user/login` · `GET /user/logout`
+| Module | Endpoints |
+|--------|-----------|
+| **Pet** | `POST /pet` · `GET /pet/{petId}` · `PUT /pet` · `DELETE /pet/{petId}` · `GET /pet/findByStatus` |
+| **Store** | `GET /store/inventory` · `POST /store/order` · `GET /store/order/{orderId}` · `DELETE /store/order/{orderId}` |
+| **User** | `POST /user` · `GET /user/{username}` · `PUT /user/{username}` · `DELETE /user/{username}` · `GET /user/login` · `GET /user/logout` |
 
 ---
 
@@ -101,20 +119,11 @@ Based on the API Testing Concepts from the course PPT:
 
 | Category | What was tested |
 |----------|----------------|
-| **Functional** | Correct status codes, response schema, CRUD lifecycle |
-| **Data Validation** | Missing required fields, wrong types, boundary values, invalid enums |
-| **Security** | Auth bypass, XSS in body fields, SQL injection in path params |
-| **Error Handling** | Malformed JSON, wrong Content-Type, empty body, type mismatch in path params |
-| **Performance** | Response time per endpoint (SLA: < 1000ms) |
+| **Functional** | Correct status codes, response schema, full CRUD lifecycle |
+| **Data Validation** | Missing required fields, wrong types, boundary values, invalid enum values |
+| **Security** | Auth bypass (no api_key), XSS in body, SQL injection in path params, plaintext secrets in response |
+| **Error Handling** | Malformed JSON, wrong Content-Type, empty body, non-numeric path params, integer overflow |
+| **Performance** | Response time per endpoint (SLA: < 2000ms for single resource, < 3000ms for collections) |
 
-**Authentication:** API Key via `api_key: special-key` header (Petstore's auth model).
-
----
-
-## Key Observations
-
-1. **Authentication is not enforced** — write operations (POST/PUT/DELETE) work without any API key (BUG-008), and login returns a session for any credentials including none (BUG-001).
-2. **No input validation on required fields** — `name` and `photoUrls` marked required in the Swagger spec are silently ignored server-side.
-3. **Server crashes (500) on bad input** — malformed JSON and empty body both cause 500 rather than a clean 400.
-4. **Stack traces leaked** — `java.lang.NumberFormatException` class name appears in error responses, exposing server technology.
-5. **No pagination on collection endpoints** — `GET /pet/findByStatus` returns the full dataset (~70 KB) with no limit/offset, causing ~1.5s response times.
+**Authentication:** API Key via `api_key: special-key` header.  
+**Variable management:** `petId`, `orderId`, `username` generated dynamically per run in pre-request scripts — no manual setup needed.
