@@ -1,0 +1,57 @@
+{
+  "cookies": [
+    {
+      "name": "PHPSESSID",
+      "value": "a6cb1872b7feaac2d297757a53c1cf8a",
+      "domain": "limber-suggestion.demo.prestashop.com",
+      "path": "/",
+      "expires": 1814684020.81932,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "cf_clearance",
+      "value": "UbDXkL2Csu0RAAH1rZaMJ87hLMv1a5bC8mpa1B74eNQ-1780124022-1.2.1.1-yaBSbixDVOv2rmAB0Wu6Mg4vYGnFm3eYAH1uMGegD6ytWKdOPLIdM51hJAZ6_c_Bkazdo7pzxB3pgRhPfw9NU_wJWKGBK7HVctgeVJfq_AvwEb15SxZ4Kfc0742CzjjpS0SAhHEcLTpsTM.rXaVgHqH5lroZGQ4cFF.ds_QfnlPPKim2vJ3_Oyp2DY4qkk6aYWowuS6dyK_gFO9sJU3sS0esurXRzAYI9kqMOeRl8tB4SwwSYIwK_jKfoq.A4qtWssLMiJmRWDYAiRE5iF2yMqw5fWGKZDrkq4DusVNLmVMVzPTUXlQ.AeoAfLejKv11WW.z0qSNhZ_zkEt930X4lA",
+      "domain": ".prestashop.com",
+      "path": "/",
+      "expires": 1811660022.771116,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None",
+      "partitionKey": "https://prestashop.com",
+      "_crHasCrossSiteAncestor": false
+    },
+    {
+      "name": "__cf_bm",
+      "value": "uXNQkXz8sfXInk5JwkNrXNWxI_MUILFZEYcFCnrxEyo-1780124022.7481847-1.0.1.1-VRr3dsMzfKx..MHiFKRW6BFBJKJ4wbOxKT.vRarrCbctBgwbB1PRVhGiGaqizTNndE.gKhIvsU27b8ws9lbxdjp2OFBXp0GgqSoT99F.zUsx3wMDFUge94lnHIjm8JbC",
+      "domain": ".prestashop.com",
+      "path": "/",
+      "expires": 1780125822.771175,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "PrestaShop-db58d9aaf44bc783a2e2da98a29d550e",
+      "value": "def5020079b1252eb3b82f1bb3d3d426aa62f730c141edfb66e8bae9397abfe5bb585f67bfd4ead7e4b5827eec8196f567094b70ad5a529aa8532e71916044a5ed5387a6b6dcf20bca19b1dff7682d5c0de590e8cf8adfa4b8a5e3f3bc3fd2743a8104f1d59983e67c26f426649e6ed0c43ec5c63bff0f8e1f0299593208c51813fa76f7b7a3155c15c6940f04aab88f2d5a87319c236a6fb03d0c8e5ea76fe93ef9fadbf2bab1eff4eeb1e29aa9d1928649296dd5ef5a03e7a7a07caa2a2826b8fa10662d04737e43f55b53691d37598ee98a6418a62bcf8e608c43c2ae102b67edd6394a2fb5e36e7dd8a47ab8db76588ca05deadb7d12de159a1431a0ed6f5102dc04fb0c1a69d08d1c699f033f07b1dd03ab0174f28e5f1a6a311ded5032d70805ddd0f395b8cec537d78e5241ac25bc3f088fac3f544a93f0b59d073cc0e5cc0c3d88ea254d41ada847de06cec1e1456eda442b9ddae53720d56bea52955fc3fc96738ada50c3b745490afa63a6c40e4cb9cb09bdeca5ecb90cd3460e630760b36cc7f412097dd01f2b5da08377a00adc30fee3a4291d043676cca8369d6c63d1fbf378c7acb2a499e26cd4a2ff17890100c2d466b5883e3cb39b70dd3f9a7b9acfa2ea300a9495ebcf80d14d21a7ea48cf0249d1b07ff5ea3b0b4c03efb6d1cbff7aa53f4e3b3313e4",
+      "domain": ".limber-suggestion.demo.prestashop.com",
+      "path": "/",
+      "expires": 1781852025.06515,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "https://limber-suggestion.demo.prestashop.com",
+      "localStorage": [
+        {
+          "name": "_gcl_ls",
+          "value": "{\"schema\":\"gcl\",\"version\":1,\"gtg_load_status\":{\"status\":2,\"expires\":1780210422627}}"
+        }
+      ]
+    }
+  ]
+}
